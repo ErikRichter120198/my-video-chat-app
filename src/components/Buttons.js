@@ -1,9 +1,8 @@
-// Buttons.js
-
 import React from 'react';
 import PropTypes from 'prop-types';
+import './Buttons.css';
 
-const Button = ({ onClick, disabled, children, className }) => {
+const Button = ({ onClick, disabled = false, children, className = '' }) => {
   return (
     <button
       onClick={onClick}
@@ -34,16 +33,17 @@ ChatButton.propTypes = {
   onClick: PropTypes.func.isRequired,
 };
 
-const MuteButton = ({ onClick }) => {
+const MuteButton = ({ onClick, isMuted }) => {
   return (
     <Button onClick={onClick} className="mute-button">
-      Mute
+      {isMuted ? 'Unmute' : 'Mute'}
     </Button>
   );
 };
 
 MuteButton.propTypes = {
   onClick: PropTypes.func.isRequired,
+  isMuted: PropTypes.bool.isRequired,
 };
 
 const CameraOffButton = ({ onClick }) => {
@@ -70,4 +70,17 @@ EmojisButton.propTypes = {
   onClick: PropTypes.func.isRequired,
 };
 
-export { ChatButton, MuteButton, CameraOffButton, EmojisButton };
+const MicButton = ({ onClick, isMicOn }) => {
+  return (
+    <Button onClick={onClick} className="mic-button">
+      {isMicOn ? 'Mic Off' : 'Mic On'}
+    </Button>
+  );
+};
+
+MicButton.propTypes = {
+  onClick: PropTypes.func.isRequired,
+  isMicOn: PropTypes.bool.isRequired,
+};
+
+export { ChatButton, MuteButton, CameraOffButton, EmojisButton, MicButton };

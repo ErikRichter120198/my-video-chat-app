@@ -52,10 +52,6 @@ const VideoChat = () => {
         withCredentials: true
          }); 
 
-   
-
-    
-
     startVideo();
 
     socketRef.current.on('offer', async (id, description) => {
@@ -92,15 +88,15 @@ const VideoChat = () => {
     };
   }, []);
 
-  useEffect(() => { 
-
-
-  })
-
   return (
-    <div>
-      <video ref={localVideoRef} autoPlay muted></video>
-      <video ref={remoteVideoRef} autoPlay></video>
+    <div className="video-container">
+      <div className="video-wrapper">
+        <video ref={localVideoRef} autoPlay muted></video>
+      </div>
+      <div className="video-wrapper">
+        <video ref={remoteVideoRef} autoPlay></video>
+      </div>
+      {/* Füge hier weitere video-wrapper hinzu, wenn neue Teilnehmer beitreten */}
     </div>
   );
 };
