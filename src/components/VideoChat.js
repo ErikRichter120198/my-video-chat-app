@@ -13,6 +13,11 @@ const VideoChat = () => {
   useEffect(() => {
     const room = "some-room"; // Raumname, um Benutzer zu gruppieren
 
+    
+const socket = io.connect('https://3.67.71.115:5000', {
+  secure: true, // Stellt sicher, dass HTTPS verwendet wird
+});
+
     // Initialisierung des lokalen Medienstreams
     const initMediaStream = async () => {
       try {
@@ -93,6 +98,7 @@ const VideoChat = () => {
     </div>
   );
 };
+
 
 export default VideoChat;
 
