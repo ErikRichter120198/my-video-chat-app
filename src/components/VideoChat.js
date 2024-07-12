@@ -7,11 +7,13 @@ const socket = io("http://localhost:3000"); // Verbindung zum Socket.IO-Server h
 
 const VideoChat = () => {
   const localVideoRef = useRef();
-  const [isCameraOn, setIsCameraOn] = useState(true);
   const [remoteStreams, setRemoteStreams] = useState([]);
+  const [peers, setPeers] = useState({});
 
   useEffect(() => {
-    // Funktion zum Initialisieren der Medienstreams
+    const room = "some-room"; // Raumname, um Benutzer zu gruppieren
+
+    // Initialisierung des lokalen Medienstreams
     const initMediaStream = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -19,52 +21,78 @@ const VideoChat = () => {
           audio: true,
         });
         localVideoRef.current.srcObject = stream;
-        socket.emit("stream", stream); // Senden des eigenen Streams an den Server
 
-        socket.on("stream", (socketId, remoteStream) => {
-          setRemoteStreams((prevStreams) => [
-            ...prevStreams,
-            { socketId, stream: remoteStream },
-          ]);
+        // Client tritt dem Raum bei
+        socket.emit("join", room);
+
+        // Angebot erhalten
+        socket.on("offer", async (id, description) => {
+          const peerConnection = new RTCPeerConnection();
+          peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+              socket.emit("candidate", room, event.candidate);
+            }
+          };
+          peerConnection.ontrack = (event) => {
+            setRemoteStreams((prevStreams) => [
+              ...prevStreams,
+              { id, stream: event.streams[0] },
+            ]);
+          };
+          await peerConnection.setRemoteDescription(description);
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit("answer", answer);
+          peers[id] = peerConnection;
+          setPeers(peers);
         });
 
-        socket.on("stopStream", (socketId) => {
-          setRemoteStreams((prevStreams) =>
-            prevStreams.filter((stream) => stream.socketId !== socketId)
-          );
+        // Antwort erhalten
+        socket.on("answer", async (id, description) => {
+          await peers[id].setRemoteDescription(description);
         });
+
+        // ICE-Kandidat erhalten
+        socket.on("candidate", async (id, candidate) => {
+          await peers[id].addIceCandidate(candidate);
+        });
+
+        // Benutzer getrennt
+        socket.on("user-disconnected", (id) => {
+          if (peers[id]) {
+            peers[id].close();
+            delete peers[id];
+            setRemoteStreams((prevStreams) =>
+              prevStreams.filter((stream) => stream.id !== id)
+            );
+            setPeers(peers);
+          }
+        });
+
+        // Stream zum neuen Peer hinzufügen
+        stream.getTracks().forEach((track) => {
+          for (const peerId in peers) {
+            peers[peerId].addTrack(track, stream);
+          }
+        });
+
       } catch (error) {
         console.error("Error accessing media devices.", error);
       }
     };
 
     initMediaStream();
-
-    return () => {
-      socket.emit("stopStream"); // Beenden des eigenen Streams beim Verlassen
-    };
   }, []);
-
-  const toggleCamera = () => {
-    const updatedCameraStatus = !isCameraOn;
-    setIsCameraOn(updatedCameraStatus);
-    socket.emit("toggleCamera", updatedCameraStatus);
-  };
 
   return (
     <div>
       <video ref={localVideoRef} autoPlay muted playsInline></video>
       {remoteStreams.map((remoteStream) => (
-        <video key={remoteStream.socketId} autoPlay playsInline>
-          <track kind="captions" srcLang="en" />
-          Your browser does not support the video tag.
-        </video>
+        <video key={remoteStream.id} autoPlay playsInline srcObject={remoteStream.stream}></video>
       ))}
-      <button onClick={toggleCamera}>
-        {isCameraOn ? "Turn Camera Off" : "Turn Camera On"}
-      </button>
     </div>
   );
 };
 
 export default VideoChat;
+
